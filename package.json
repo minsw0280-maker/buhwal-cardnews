@@ -1,0 +1,12 @@
+{
+  "name": "buhwal-cardnews",
+  "version": "1.0.0",
+  "description": "부활수업 카드뉴스 공방 — 사진·제목·본문으로 4:5 카드뉴스를 만들고 AI 글쓰기와 힉스필드 이미지를 붙인 사이트",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

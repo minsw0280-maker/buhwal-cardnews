@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>부활수업 카드뉴스 공방</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+/* Layout: 상단 작업대(설정·AI 글쓰기·내보내기) → 카드 한 장당 한 줄 (왼쪽 1080×1350 미리보기, 오른쪽 편집칸) */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --ink:#151a24; --muted:#5d6676; --line:#dde2ea;
+  --accent:#2648d8; --accent-ink:#ffffff; --accent-soft:#e6ebff;
+  --ok:#17804a; --warn:#a05a00; --err:#c22d2d;
+  --field:#f8f9fb;
+  --f-display:"Black Han Sans","Noto Sans KR",system-ui,sans-serif;
+  --f-body:"Noto Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f131a; --panel:#171c25; --ink:#e8ecf3; --muted:#9aa4b5; --line:#2a3240;
+  --accent:#7d95ff; --accent-ink:#0b1020; --accent-soft:#1f2950;
+  --ok:#4cc985; --warn:#e6a54a; --err:#ff7b7b; --field:#11161e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f131a; --panel:#171c25; --ink:#e8ecf3; --muted:#9aa4b5; --line:#2a3240;
+  --accent:#7d95ff; --accent-ink:#0b1020; --accent-soft:#1f2950;
+  --ok:#4cc985; --warn:#e6a54a; --err:#ff7b7b; --field:#11161e; color-scheme:dark}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:22px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,4vw,40px);line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);margin:6px 0 0;max-width:62ch}
+.bench{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:12px;align-content:start;min-width:0}
+.panel h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:700}
+label{display:grid;gap:4px;font-size:13px;color:var(--muted);font-weight:500}
+input[type=text],textarea,select{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;box-sizing:border-box}
+textarea{resize:vertical;min-height:64px}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible,.file:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.row>label{flex:1 1 120px}
+button{font:inherit;font-weight:700;font-size:14px;border-radius:8px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button:disabled{opacity:.5;cursor:default}
+button.ghost{background:transparent}
+.swatches{display:flex;gap:8px}
+.sw{width:30px;height:30px;border-radius:50%;padding:0;border:2px solid var(--line);position:relative}
+.sw[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 2px var(--panel) inset}
+.status{font-size:13px;color:var(--muted);min-height:1.4em;margin:0}
+.status.ok{color:var(--ok)}.status.warn{color:var(--warn)}.status.err{color:var(--err)}
+.cards{display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:18px}
+@media (max-width:720px){.card{grid-template-columns:1fr}}
+.pv{display:grid;gap:8px;align-content:start}
+.pv canvas{width:100%;max-width:100%;aspect-ratio:4/5;height:auto;border-radius:6px;background:#222;display:block}
+.pvbar{display:flex;gap:8px;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ed{display:grid;gap:10px;min-width:0}
+.edhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.cut{font-family:var(--f-display);font-size:20px}
+.cut small{font-family:var(--f-body);font-size:12px;color:var(--muted);margin-left:6px;font-weight:500}
+.imgbox{border:1px dashed var(--line);border-radius:8px;padding:10px;display:grid;gap:8px;background:var(--field)}
+.file{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;background:var(--panel);color:var(--ink)}
+.file input{position:absolute;opacity:0;width:1px;height:1px}
+.tiny{font-size:12px;color:var(--muted)}
+.tiny a{color:var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.note{font-size:12px;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>부활수업 <span>카드뉴스</span> 공방</h1>
+      <p class="sub">사진·큰 제목·본문을 넣으면 인스타그램 4:5(1080×1350) 카드로 바로 만들어집니다. 주제만 주면 AI가 글을 쓰고, 힉스필드로 배경 이미지도 만들 수 있어요.</p>
+    </div>
+    <button class="primary" id="zipBtn" type="button">전체 카드 저장 (ZIP)</button>
+  </header>
+  <form class="panel" id="codeBox" hidden>
+    <h2>접근 코드</h2>
+    <p class="note">AI 글쓰기와 이미지 생성은 접근 코드를 아는 분만 쓸 수 있어요. 한 번 넣으면 이 브라우저에서 기억합니다.</p>
+    <div class="row"><label for="codeInput">코드<input type="text" id="codeInput" autocomplete="off"></label><button class="primary" type="submit">확인</button></div>
+    <p class="status" id="codeStatus"></p>
+  </form>
+
+  <section class="bench">
+    <div class="panel">
+      <h2>기본 설정</h2>
+      <div class="row">
+        <label for="cutCount">컷 수
+          <select id="cutCount"></select>
+        </label>
+        <label for="brand">상단 표기
+          <input type="text" id="brand" placeholder="예: 부활수업">
+        </label>
+      </div>
+      <div class="row">
+        <label for="fontSel">제목 글꼴
+          <select id="fontSel">
+            <option value="noto">굵은 고딕</option>
+            <option value="bhs">블랙한산스</option>
+          </select>
+        </label>
+        <label for="coverSel">표지 스타일
+          <select id="coverSel">
+            <option value="mag">매거진 (하단 큰 제목)</option>
+            <option value="center">가운데 정렬</option>
+            <option value="frame">액자형 (사진 + 글 판)</option>
+          </select>
+        </label>
+        <label for="numSel">쪽 번호
+          <select id="numSel"><option value="on">표시</option><option value="off">숨김</option></select>
+        </label>
+      </div>
+      <div><div class="tiny" id="swLabel" style="margin-bottom:6px">제목 색</div>
+        <div class="swatches" role="group" aria-labelledby="swLabel" id="swatches"></div></div>
+    </div>
+
+    <div class="panel">
+      <h2>AI 글쓰기</h2>
+      <label for="topic">주제 또는 수업 내용
+        <textarea id="topic" placeholder="예: 질문하는 습관이 공부를 바꾸는 이유"></textarea>
+      </label>
+      <div class="row">
+        <label for="tone">말투
+          <select id="tone">
+            <option>친근하고 따뜻하게</option>
+            <option>단정하고 신뢰감 있게</option>
+            <option>짧고 강렬하게</option>
+            <option>이야기 들려주듯</option>
+          </select>
+        </label>
+        <label for="aud">읽는 사람
+          <input type="text" id="aud" placeholder="예: 학부모, 중학생">
+        </label>
+      </div>
+      <div class="row"><button class="primary" id="writeBtn" type="button">컷 수에 맞춰 글 쓰기</button></div>
+      <p class="status" id="writeStatus"></p>
+      <p class="note">사진은 그대로 두고 글만 바꿉니다. 이미지 프롬프트도 함께 채워져요.</p>
+    </div>
+
+    <div class="panel">
+      <h2>힉스필드 이미지</h2>
+      <p class="note">각 카드의 ‘이미지 프롬프트’로 배경 사진을 만듭니다. 아래쪽은 글이 들어가도록 비워 달라고 함께 요청해요. 완성된 이미지는 카드에 바로 들어갑니다. 한 장에 보통 30초~1분 걸려요.</p>
+      <div class="row"><button id="allImgBtn" type="button">사진 없는 카드 모두 생성</button></div>
+      <p class="status" id="imgStatus"></p>
+    </div>
+  </section>
+
+  <section class="cards" id="cards" aria-label="카드 목록"></section>
+</div>
+
+<script>
+(()=>{
+// (원본 아티팩트에서 옮김)
+const W=1080,H=1350,MAX=10;
+const COLORS=[{k:'#ffffff',n:'흰색'},{k:'#ffd84a',n:'노랑'},{k:'#7ef0c6',n:'민트'},{k:'#ff9fb6',n:'분홍'}];
+const SAMPLE=[
+ {kicker:'부활수업 이야기',title:'질문 하나가\n*수업을 바꿉니다*',body:'“왜 그럴까?” 한마디에 아이들의 눈빛이 달라집니다.',prompt:'Korean middle school classroom, a student raising a hand with curiosity, warm afternoon light, photorealistic'},
+ {kicker:'',title:'답보다 *질문*이 먼저',body:'외운 답은 시험이 끝나면 잊히지만, 스스로 던진 질문은 오래 남습니다. 궁금함이 공부의 시작점이에요.',prompt:'Close-up of a notebook with handwritten question marks and a pencil on a wooden desk, soft light, photorealistic'},
+ {kicker:'오늘부터 해볼 것',title:'하루 한 번,\n“왜?”라고 묻기',body:'수업이 끝나면 하나만 적어 보세요. 작은 질문이 쌓이면 생각하는 힘이 자랍니다.',prompt:'Teenager writing in a journal at a window desk in the evening, calm mood, photorealistic'}
+];
+const blank=()=>({kicker:'',title:'',body:'',prompt:'',img:null,imgEl:null,imgY:50,genUrl:'',busy:false,msg:'',msgType:''});
+let state={count:3,brand:'부활수업',font:'noto',num:'on',color:'#ffffff',cover:'mag',cards:[]};
+for(let i=0;i<MAX;i++){const c=blank();if(SAMPLE[i])Object.assign(c,SAMPLE[i]);state.cards.push(c)}
+
+// --- 저장된 작업 불러오기 (이 브라우저에만)
+const KEY='cardnews-gongbang-v1';
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.cards){
+  Object.assign(state,{count:s.count,brand:s.brand,font:s.font,num:s.num,color:s.color,cover:s.cover||'mag'});
+  s.cards.forEach((c,i)=>{if(state.cards[i])Object.assign(state.cards[i],{kicker:c.kicker,title:c.title,body:c.body,prompt:c.prompt,imgY:c.imgY??50,img:c.img||null,genUrl:c.genUrl||''})});
+}}catch(e){}
+let saveT;function persist(){clearTimeout(saveT);saveT=setTimeout(()=>{
+  const data={count:state.count,brand:state.brand,font:state.font,num:state.num,color:state.color,cover:state.cover,
+    cards:state.cards.map(c=>({kicker:c.kicker,title:c.title,body:c.body,prompt:c.prompt,imgY:c.imgY,img:c.img,genUrl:c.genUrl}))};
+  try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){
+    try{data.cards.forEach(c=>{if(c.img&&c.img.startsWith('data:'))c.img=null});localStorage.setItem(KEY,JSON.stringify(data))}catch(_){}}
+},400)}
+
+const $=id=>document.getElementById(id);
+const cutSel=$('cutCount');for(let i=1;i<=MAX;i++){const o=document.createElement('option');o.value=i;o.textContent=i+'컷';cutSel.append(o)}
+cutSel.value=state.count;$('brand').value=state.brand;$('fontSel').value=state.font;$('numSel').value=state.num;$('coverSel').value=state.cover;
+const swWrap=$('swatches');
+COLORS.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='sw';b.style.background=c.k;b.title=c.n;b.setAttribute('aria-label','제목 색 '+c.n);
+  b.onclick=()=>{state.color=c.k;syncSw();drawAll();persist()};swWrap.append(b)});
+function syncSw(){[...swWrap.children].forEach((b,i)=>b.setAttribute('aria-pressed',COLORS[i].k===state.color))}
+syncSw();
+cutSel.onchange=()=>{state.count=+cutSel.value;buildCards();persist()};
+$('brand').oninput=e=>{state.brand=e.target.value;drawAll();persist()};
+$('fontSel').onchange=e=>{state.font=e.target.value;drawAll();persist()};
+$('coverSel').onchange=e=>{state.cover=e.target.value;draw(canv[0],state.cards[0],0);persist()};
+$('numSel').onchange=e=>{state.num=e.target.value;drawAll();persist()};
+
+// --- 이미지 로딩
+function loadImg(src,cors){return new Promise((res,rej)=>{const im=new Image();if(cors)im.crossOrigin='anonymous';im.onload=()=>res(im);im.onerror=rej;im.src=src})}
+async function attachImg(c,src){
+  try{c.imgEl=await loadImg(src,!src.startsWith('data:'));c.img=src;return true}catch(e){c.imgEl=null;return false}
+}
+
+// --- 캔버스 그리기
+const TF=()=>state.font==='bhs'?'400 {s}px "Black Han Sans","Noto Sans KR",sans-serif':'900 {s}px "Noto Sans KR",sans-serif';
+const F=(tpl,s)=>tpl.replace('{s}',s);
+const hlColor=()=>state.color==='#ffffff'?'#ffd84a':state.color;
+const isSp=t=>/^\s+$/.test(t);
+function parseRich(text){const paras=[];for(const para of String(text||'').split('\n')){const toks=[];
+  para.split('*').forEach((part,k)=>{part.split(/(\s+)/).forEach(t=>{if(t)toks.push({t,hl:k%2===1})})});paras.push(toks)}return paras}
+function wrapRich(ctx,text,maxW){const lines=[];
+  const trim=l=>{while(l.length&&isSp(l[l.length-1].t))l.pop();return l};
+  for(const toks of parseRich(text)){let line=[],w=0;
+    for(const tk of toks){const tw=ctx.measureText(tk.t).width;
+      if(isSp(tk.t)){if(line.length){line.push(tk);w+=tw}continue}
+      if(w+tw<=maxW){line.push(tk);w+=tw;continue}
+      if(trim(line).length)lines.push(line);line=[];w=0;
+      if(tw>maxW){let buf='';for(const ch of tk.t){if(ctx.measureText(buf+ch).width>maxW){lines.push([{t:buf,hl:tk.hl}]);buf=ch}else buf+=ch}
+        line=[{t:buf,hl:tk.hl}];w=ctx.measureText(buf).width}else{line=[tk];w=tw}}
+    lines.push(trim(line))}
+  return lines}
+const lineW=(ctx,l)=>l.reduce((a,tk)=>a+ctx.measureText(tk.t).width,0);
+// mode 'box' = 형광 박스 강조, 'color' = 글자색 강조
+function drawRich(ctx,lines,x,y,lh,{align='left',color='#fff',mode='color',size=40}={}){
+  ctx.textAlign='left';
+  lines.forEach((line,i)=>{const by=y+i*lh,lw=lineW(ctx,line);const x0=align==='center'?x-lw/2:x;
+    if(mode==='box'){let start=null,cur=x0;line.forEach((tk,j)=>{const tw=ctx.measureText(tk.t).width;
+      if(tk.hl&&start===null)start=cur;cur+=tw;const nx=line[j+1];
+      if(tk.hl&&!(nx&&nx.hl)){ctx.save();ctx.shadowColor='transparent';ctx.fillStyle=hlColor();
+        ctx.fillRect(start-size*.1,by-size*.84,cur-start+size*.2,size*1.04);ctx.restore();start=null}})}
+    let cur=x0;line.forEach(tk=>{if(tk.hl&&mode==='box'){ctx.save();ctx.shadowColor='transparent';ctx.fillStyle='#111';ctx.fillText(tk.t,cur,by);ctx.restore()}
+      else{ctx.fillStyle=tk.hl?hlColor():color;ctx.fillText(tk.t,cur,by)}cur+=ctx.measureText(tk.t).width})})}
+function fitTitle(ctx,text,maxW,start,min,maxLines){let s=start,l;do{ctx.font=F(TF(),s);l=wrapRich(ctx,text,maxW);if(l.length<=maxLines)break;s-=6}while(s>min);return{s,l}}
+function drawBg(ctx,c,x,y,w,h){
+  ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
+  if(c.imgEl){const im=c.imgEl,s=Math.max(w/im.naturalWidth,h/im.naturalHeight),dw=im.naturalWidth*s,dh=im.naturalHeight*s;
+    ctx.drawImage(im,x+(w-dw)/2,y+(h-dh)*(c.imgY/100),dw,dh)}
+  else{const g=ctx.createLinearGradient(x,y,x+w,y+h);g.addColorStop(0,'#33405c');g.addColorStop(1,'#11151f');ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='rgba(255,255,255,.35)';ctx.font='500 36px "Noto Sans KR",sans-serif';ctx.textAlign='center';
+    ctx.fillText(c.busy?'이미지를 만드는 중…':'사진을 올리거나 이미지를 생성하세요',x+w/2,y+h*0.2);ctx.textAlign='left'}
+  ctx.restore()}
+function pill(ctx,text,x,y,{bg='rgba(0,0,0,.45)',fg='#fff',size=30,h=56,align='left'}={}){
+  ctx.save();ctx.shadowColor='transparent';ctx.font=`700 ${size}px "Noto Sans KR",sans-serif`;const tw=ctx.measureText(text).width,w=tw+44;
+  const px=align==='center'?x-w/2:align==='right'?x-w:x;
+  ctx.fillStyle=bg;roundRect(ctx,px,y,w,h,h/2);ctx.fill();ctx.fillStyle=fg;ctx.textAlign='left';ctx.fillText(text,px+22,y+h/2+size*.36);ctx.restore();return w}
+function swipeHint(ctx,x,y,align){if(state.count<2)return;ctx.save();ctx.shadowColor='transparent';ctx.font='500 28px "Noto Sans KR",sans-serif';
+  ctx.fillStyle='rgba(255,255,255,.82)';ctx.textAlign=align;ctx.fillText('옆으로 넘겨보세요  →',x,y);ctx.restore()}
+function shade(ctx,y0,y1,stops){const g=ctx.createLinearGradient(0,y0,0,y1);stops.forEach(([p,a])=>g.addColorStop(p,`rgba(0,0,0,${a})`));ctx.fillStyle=g;ctx.fillRect(0,y0,W,y1-y0)}
+
+function drawCover(ctx,c){
+  const PAD=80,maxW=W-PAD*2,st=state.cover;
+  ctx.textBaseline='alphabetic';
+  if(st==='frame'){
+    ctx.fillStyle='#0e1220';ctx.fillRect(0,0,W,H);
+    const ph=740;ctx.save();roundRect(ctx,56,56,W-112,ph,28);ctx.clip();drawBg(ctx,c,56,56,W-112,ph);ctx.restore();
+    if(state.brand.trim())pill(ctx,state.brand,84,84);
+    const top=56+ph+40,bottom=H-120,mw=W-112;
+    let kH=c.kicker.trim()?54:0,s=104,tl,bl,blh=52;
+    ctx.font='400 36px "Noto Sans KR",sans-serif';bl=wrapRich(ctx,c.body.replace(/\*/g,''),mw).slice(0,2);
+    for(;s>=60;s-=6){ctx.font=F(TF(),s);tl=wrapRich(ctx,c.title,mw);const tot=kH+s*0.9+(tl.length-1)*s*1.14+(bl.length?30+bl.length*blh:0);if(tot<=bottom-top)break}
+    let y=top;
+    if(kH){ctx.font='700 32px "Noto Sans KR",sans-serif';ctx.fillStyle=hlColor();ctx.fillText(c.kicker,56,y+32);y+=kH}
+    ctx.font=F(TF(),s);y+=s*0.9;drawRich(ctx,tl,56,y,s*1.14,{color:state.color,mode:'box',size:s});y+=(tl.length-1)*s*1.14;
+    if(bl.length){ctx.font='400 36px "Noto Sans KR",sans-serif';drawRich(ctx,bl,56,y+30+blh*0.8,blh,{color:'rgba(255,255,255,.72)'})}
+    // 쪽 표시 점
+    if(state.count>1){for(let k=0;k<state.count;k++){ctx.fillStyle=k===0?hlColor():'rgba(255,255,255,.28)';ctx.beginPath();ctx.arc(68+k*28,H-66,k===0?8:6,0,Math.PI*2);ctx.fill()}}
+    swipeHint(ctx,W-56,H-56,'right');return;
+  }
+  drawBg(ctx,c,0,0,W,H);
+  if(st==='center'){
+    ctx.fillStyle='rgba(0,0,0,.48)';ctx.fillRect(0,0,W,H);
+    const rg=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.75);rg.addColorStop(0,'rgba(0,0,0,0)');rg.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=rg;ctx.fillRect(0,0,W,H);
+    if(state.brand.trim())pill(ctx,state.brand,W/2,70,{align:'center'});
+    const {s,l}=fitTitle(ctx,c.title,W-160,124,70,4),lh=s*1.14;
+    ctx.font='400 38px "Noto Sans KR",sans-serif';const bl=wrapRich(ctx,c.body.replace(/\*/g,''),W-220).slice(0,3),blh=58;
+    const kH=c.kicker.trim()?70:0,tot=kH+s*0.9+(l.length-1)*lh+50+(bl.length?bl.length*blh+20:0);
+    let y=(H-tot)/2;
+    ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=16;
+    if(kH){ctx.font='700 32px "Noto Sans KR",sans-serif';const kw=ctx.measureText(c.kicker).width;ctx.fillStyle=hlColor();ctx.textAlign='center';ctx.fillText(c.kicker,W/2,y+32);ctx.textAlign='left';
+      ctx.fillRect(W/2-kw/2-80,y+20,56,3);ctx.fillRect(W/2+kw/2+24,y+20,56,3);y+=kH}
+    ctx.font=F(TF(),s);y+=s*0.9;drawRich(ctx,l,W/2,y,lh,{align:'center',color:state.color,mode:'box',size:s});y+=(l.length-1)*lh+44;
+    ctx.shadowBlur=0;ctx.fillStyle=hlColor();ctx.fillRect(W/2-36,y,72,7);y+=26;
+    if(bl.length){ctx.shadowBlur=10;ctx.font='400 38px "Noto Sans KR",sans-serif';drawRich(ctx,bl,W/2,y+blh*0.8,blh,{align:'center',color:'rgba(255,255,255,.92)'})}
+    ctx.shadowBlur=0;swipeHint(ctx,W/2,H-70,'center');return;
+  }
+  // 매거진 (기본)
+  shade(ctx,0,H*0.26,[[0,.5],[1,0]]);
+  shade(ctx,H*0.26,H,[[0,0],[.45,.6],[1,.94]]);
+  ctx.shadowColor='transparent';
+  ctx.fillStyle='rgba(255,255,255,.3)';ctx.fillRect(PAD,H-130,maxW,2);
+  ctx.fillStyle=hlColor();ctx.fillRect(PAD,H-90,14,14);
+  ctx.font='700 30px "Noto Sans KR",sans-serif';ctx.fillStyle='#fff';ctx.fillText(state.brand||'',PAD+28,H-72);
+  swipeHint(ctx,W-PAD,H-72,'right');
+  ctx.font='400 38px "Noto Sans KR",sans-serif';const bl=wrapRich(ctx,c.body.replace(/\*/g,''),maxW).slice(0,3),blh=56;
+  const bodyTop=H-178-(bl.length-1)*blh;
+  ctx.shadowColor='rgba(0,0,0,.55)';ctx.shadowBlur=10;
+  if(bl.length)drawRich(ctx,bl,PAD,bodyTop,blh,{color:'rgba(255,255,255,.9)'});
+  const {s,l}=fitTitle(ctx,c.title,maxW,122,76,4),lh=s*1.12;
+  const tLast=bl.length?bodyTop-blh-26:H-178,tFirst=tLast-(l.length-1)*lh;
+  ctx.font=F(TF(),s);ctx.shadowBlur=18;ctx.shadowColor='rgba(0,0,0,.7)';
+  drawRich(ctx,l,PAD,tFirst,lh,{color:state.color,mode:'box',size:s});
+  ctx.shadowBlur=0;
+  if(c.kicker.trim())pill(ctx,c.kicker,PAD,tFirst-s*0.86-80,{bg:hlColor(),fg:'#111'});
+}
+function wrap(ctx,text,maxW){
+  const out=[];
+  for(const para of String(text||'').split('\n')){
+    if(!para.trim()){out.push('');continue}
+    let line='';
+    for(const word of para.split(/(\s+)/)){
+      if(!word)continue;
+      const test=line+word;
+      if(ctx.measureText(test).width<=maxW){line=test;continue}
+      if(line.trim()){out.push(line.trimEnd());line=word.trimStart()}else line='';
+      // 단어 자체가 길면 글자 단위로 자르기
+      if(ctx.measureText(line).width>maxW){let buf='';for(const ch of line){if(ctx.measureText(buf+ch).width>maxW){out.push(buf);buf=ch}else buf+=ch}line=buf}
+    }
+    if(line.trim())out.push(line.trimEnd());
+  }
+  return out;
+}
+function draw(cv,c,idx){
+  const ctx=cv.getContext('2d');cv.width=W;cv.height=H;
+  if(idx===0){drawCover(ctx,c);return}
+  drawBg(ctx,c,0,0,W,H);
+  // 하단 어둡게
+  const g2=ctx.createLinearGradient(0,H*0.36,0,H);
+  g2.addColorStop(0,'rgba(0,0,0,0)');g2.addColorStop(.45,'rgba(0,0,0,.72)');g2.addColorStop(1,'rgba(0,0,0,.92)');
+  ctx.fillStyle=g2;ctx.fillRect(0,H*0.36,W,H*0.64);
+  const PAD=72,maxW=W-PAD*2;
+  // 상단 표기 & 쪽 번호
+  ctx.textBaseline='alphabetic';
+  if(state.brand.trim()){
+    ctx.font='700 30px "Noto Sans KR",sans-serif';const tw=ctx.measureText(state.brand).width;
+    ctx.fillStyle='rgba(0,0,0,.45)';roundRect(ctx,PAD-4,60,tw+40,56,28);ctx.fill();
+    ctx.fillStyle='#fff';ctx.fillText(state.brand,PAD+16,98);
+  }
+  if(state.num==='on'){
+    const t=(idx+1)+' / '+state.count;ctx.font='700 30px "Noto Sans KR",sans-serif';const tw=ctx.measureText(t).width;
+    ctx.fillStyle='rgba(0,0,0,.45)';roundRect(ctx,W-PAD-tw-36,60,tw+40,56,28);ctx.fill();
+    ctx.fillStyle='#fff';ctx.fillText(t,W-PAD-tw-16,98);
+  }
+  // 본문 → 제목 → 머리말 (아래에서 위로 쌓기)
+  ctx.font='400 40px "Noto Sans KR",sans-serif';
+  const body=wrapRich(ctx,c.body,maxW).slice(0,7),bodyLH=62;
+  const {s:ts,l:title}=fitTitle(ctx,c.title,maxW,100,60,3);
+  const tLH=Math.round(ts*1.18);
+  let y=H-88-(body.length?(body.length-1)*bodyLH:0);
+  // 본문
+  ctx.shadowColor='rgba(0,0,0,.55)';ctx.shadowBlur=10;
+  ctx.font='400 40px "Noto Sans KR",sans-serif';ctx.fillStyle='rgba(255,255,255,.93)';
+  drawRich(ctx,body,PAD,y,bodyLH,{color:'rgba(255,255,255,.93)'});
+  let ty=(body.length?y-bodyLH*0.4-40:H-88)-(title.length-1)*tLH;
+  if(!body.length)ty=H-96-(title.length-1)*tLH;
+  ctx.font=F(TF(),ts);ctx.shadowBlur=18;ctx.shadowColor='rgba(0,0,0,.7)';
+  drawRich(ctx,title,PAD,ty,tLH,{color:state.color,size:ts});
+  if(c.kicker.trim()){
+    ctx.font='700 36px "Noto Sans KR",sans-serif';ctx.fillStyle=state.color==='#ffffff'?'#ffd84a':'#ffffff';ctx.shadowBlur=10;
+    ctx.fillText(c.kicker,PAD,ty-ts*0.95-6);
+  }
+  ctx.shadowBlur=0;
+}
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+
+// --- 카드 편집 줄
+const cardsEl=$('cards');let canv=[];
+function esc(s){return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+function buildCards(){
+  cardsEl.innerHTML='';canv=[];
+  for(let i=0;i<state.count;i++){
+    const c=state.cards[i],el=document.createElement('article');el.className='card';
+    el.innerHTML=`
+      <div class="pv"><canvas aria-label="${i+1}번 카드 미리보기"></canvas>
+        <div class="pvbar"><span>1080 × 1350</span><button type="button" class="ghost" data-act="save">PNG 저장</button></div></div>
+      <div class="ed">
+        <div class="edhead"><div class="cut">${i+1}컷<small>${i===0?'표지':(i===state.count-1&&state.count>1?'마무리':'')}</small></div>
+          <button type="button" class="ghost" data-act="rewrite">이 카드 글만 다시 쓰기</button></div>
+        <div class="imgbox">
+          <div class="row">
+            <label class="file" for="f${i}">사진 올리기<input type="file" id="f${i}" accept="image/*"></label>
+            <button type="button" data-act="gen">힉스필드로 생성</button>
+            <button type="button" class="ghost" data-act="clear">사진 빼기</button>
+          </div>
+          <label for="p${i}">이미지 프롬프트<textarea id="p${i}" rows="2" placeholder="예: 햇살 드는 교실에서 손을 드는 학생, 사진 같은 느낌">${esc(c.prompt)}</textarea></label>
+          <label for="y${i}">사진 위아래 위치<input type="range" id="y${i}" min="0" max="100" value="${c.imgY}"></label>
+          <p class="status" data-role="msg"></p>
+        </div>
+        <label for="k${i}">머리말 (선택)<input type="text" id="k${i}" value="${esc(c.kicker)}" placeholder="예: 부활수업 이야기"></label>
+        <label for="t${i}">큰 제목 <span class="tiny">(줄바꿈 가능 · *단어*로 감싸면 ${i===0?'형광 박스':'색'} 강조)</span><textarea id="t${i}" rows="2">${esc(c.title)}</textarea></label>
+        <label for="b${i}">${i===0?'부제 (한두 문장)':'본문'}<textarea id="b${i}" rows="3">${esc(c.body)}</textarea></label>
+      </div>`;
+    cardsEl.append(el);
+    const cv=el.querySelector('canvas');canv[i]=cv;
+    const bind=(id,key,num)=>{el.querySelector('#'+id).addEventListener('input',e=>{c[key]=num?+e.target.value:e.target.value;draw(cv,c,i);persist()})};
+    bind('k'+i,'kicker');bind('t'+i,'title');bind('b'+i,'body');bind('p'+i,'prompt');bind('y'+i,'imgY',true);
+    el.querySelector('#f'+i).addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+      r.onload=async()=>{await attachImg(c,r.result);c.genUrl='';setMsg(i,'','');draw(cv,c,i);persist()};r.readAsDataURL(f);e.target.value=''});
+    el.querySelector('[data-act=clear]').onclick=()=>{c.img=null;c.imgEl=null;c.genUrl='';setMsg(i,'','');draw(cv,c,i);persist()};
+    el.querySelector('[data-act=gen]').onclick=()=>genImage(i);
+    el.querySelector('[data-act=rewrite]').onclick=e=>rewriteOne(i,e.currentTarget);
+    el.querySelector('[data-act=save]').onclick=()=>saveOne(i);
+    renderMsg(i);draw(cv,c,i);
+  }
+}
+function drawAll(){for(let i=0;i<state.count;i++)draw(canv[i],state.cards[i],i)}
+function setMsg(i,msg,type){state.cards[i].msg=msg;state.cards[i].msgType=type;renderMsg(i)}
+function renderMsg(i){const el=cardsEl.children[i];if(!el)return;const p=el.querySelector('[data-role=msg]'),c=state.cards[i];
+  p.className='status '+(c.msgType||'');p.innerHTML=c.msg||'';}
+function status(id,msg,type){const p=$(id);p.textContent=msg;p.className='status '+(type||'')}
+
+// --- 서버 API
+const CODE_KEY='cardnews-code';
+let accessCode='';try{accessCode=localStorage.getItem(CODE_KEY)||''}catch(e){}
+let cfg={needCode:false,canWrite:true,canImage:true};
+async function api(path,opt={}){
+  const headers=Object.assign({'content-type':'application/json'},opt.headers||{});
+  if(accessCode)headers['x-access-code']=accessCode;
+  let r;try{r=await fetch(path,Object.assign({},opt,{headers}))}catch(e){throw new Error('서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.')}
+  if(r.status===401){showCode(true);throw new Error('접근 코드를 먼저 입력해 주세요.')}
+  if(opt.raw){if(!r.ok)throw new Error('이미지를 받지 못했어요.');return r}
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.error||('요청 실패 ('+r.status+')'));
+  return data;
+}
+function showCode(on){$('codeBox').hidden=!on}
+$('codeBox').addEventListener('submit',async e=>{e.preventDefault();accessCode=$('codeInput').value.trim();
+  try{await api('/api/check-code',{method:'POST',body:'{}'});try{localStorage.setItem(CODE_KEY,accessCode)}catch(_){}showCode(false);status('codeStatus','','')}
+  catch(err){status('codeStatus','코드가 맞지 않아요. 다시 확인해 주세요.','err');showCode(true)}});
+
+// --- AI 글쓰기
+function guide(){return `인스타그램 카드뉴스 원고를 한국어로 씁니다. 수업 이름: "${state.brand||'수업'}".
+말투: ${$('tone').value}. 읽는 사람: ${$('aud').value||'일반 독자'}.
+규칙:
+- title: 큰 제목, 18자 이내, 필요하면 \\n으로 2줄. 스크롤을 멈추게 하는 문장. 가장 중요한 단어(2~6자) 하나를 *별표*로 감싸 강조.
+- 표지(1장): title은 14자 이내로 짧고 강하게, body는 한두 문장짜리 부제(45자 이내), kicker는 시리즈명이나 질문형 머리말.
+- body: 2~3문장, 80자 안팎. 쉬운 말.
+- kicker: 6~12자 짧은 머리말. 표지·마무리 외에는 빈 문자열이어도 됨.
+- imagePrompt: 영어로 쓴 배경 사진 설명(사진 같은 느낌, 글자 없음, 아래쪽은 차분한 구도). 실존 인물·브랜드는 넣지 않음.`}
+$('writeBtn').onclick=async()=>{
+  const topic=$('topic').value.trim();if(!topic){status('writeStatus','주제를 먼저 적어 주세요.','warn');$('topic').focus();return}
+  const btn=$('writeBtn');btn.disabled=true;status('writeStatus','글을 쓰는 중… (10~30초)');
+  try{
+    const out=await api('/api/write',{method:'POST',body:JSON.stringify({prompt:`${guide()}
+주제: ${topic}
+카드 ${state.count}장. 1장은 표지(호기심 유발), ${state.count>1?state.count+'장은 마무리(정리·행동 제안), ':''}그 사이는 핵심 내용을 한 장에 하나씩.
+JSON만 답하세요: {"cards":[{"kicker":"","title":"","body":"","imagePrompt":""}]} (정확히 ${state.count}개)`})});
+    const arr=(out&&out.cards)||[];if(!arr.length)throw new Error('AI 답을 읽지 못했어요. 한 번 더 눌러 주세요.');
+    arr.slice(0,state.count).forEach((a,i)=>{const c=state.cards[i];c.kicker=a.kicker||'';c.title=a.title||'';c.body=a.body||'';if(a.imagePrompt)c.prompt=a.imagePrompt});
+    buildCards();persist();status('writeStatus',`${Math.min(arr.length,state.count)}장 글을 채웠어요. 마음에 안 드는 카드는 따로 다시 쓸 수 있어요.`,'ok');
+  }catch(e){status('writeStatus',e.message,'err')}
+  btn.disabled=false;
+};
+async function rewriteOne(i,btn){
+  const c=state.cards[i],topic=$('topic').value.trim()||state.cards.map(x=>x.title).join(' / ');
+  btn.disabled=true;setMsg(i,'이 카드 글을 다시 쓰는 중…','');
+  try{
+    const others=state.cards.slice(0,state.count).map((x,j)=>`${j+1}장: ${x.title.replace(/\n/g,' ')}`).join('\n');
+    const a=await api('/api/write',{method:'POST',body:JSON.stringify({prompt:`${guide()}
+주제: ${topic}
+전체 흐름:
+${others}
+${i+1}장(${i===0?'표지':i===state.count-1?'마무리':'본문'})만 새로 써 주세요. 지금 원고와 다른 표현으로.
+지금 원고: ${JSON.stringify({kicker:c.kicker,title:c.title,body:c.body})}
+JSON만: {"kicker":"","title":"","body":"","imagePrompt":""}`})});
+    c.kicker=a.kicker||'';c.title=a.title||c.title;c.body=a.body||c.body;if(a.imagePrompt&&!c.imgEl)c.prompt=a.imagePrompt;
+    c.msg='';buildCards();persist();
+  }catch(e){setMsg(i,e.message,'err');btn.disabled=false}
+}
+
+// --- 힉스필드 이미지 (서버가 받아서 전달)
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function blobToDataUrl(b){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(b)})}
+async function genImage(i){
+  const c=state.cards[i];if(c.busy)return false;
+  const prompt=c.prompt.trim()||[c.title,c.body].join(' ').replace(/\*/g,'').trim();
+  if(!prompt){setMsg(i,'이미지 프롬프트나 제목을 먼저 적어 주세요.','warn');return false}
+  c.busy=true;setMsg(i,'힉스필드에 요청하는 중…','');draw(canv[i],c,i);
+  try{
+    const {id}=await api('/api/image',{method:'POST',body:JSON.stringify({prompt})});
+    const t0=Date.now();let ready=false;
+    while(Date.now()-t0<240000){
+      await sleep(3000);
+      const s=await api('/api/image/'+encodeURIComponent(id));
+      if(s.ready){ready=true;break}
+      if(['failed','nsfw','canceled'].includes(s.status))throw new Error(s.status==='nsfw'?'부적절한 내용으로 판단돼 생성이 막혔어요. 프롬프트를 바꿔 보세요.':'생성이 실패로 끝났어요. 다시 눌러 보세요.');
+      setMsg(i,'이미지를 만드는 중… '+Math.round((Date.now()-t0)/1000)+'초','');
+    }
+    if(!ready)throw new Error('4분이 지나도 완성되지 않았어요. 잠시 뒤 다시 눌러 주세요.');
+    const r=await api('/api/image/'+encodeURIComponent(id)+'/file',{raw:true});
+    const dataUrl=await blobToDataUrl(await r.blob());
+    const ok=await attachImg(c,dataUrl);
+    setMsg(i,ok?'이미지를 넣었어요. 위아래 위치는 슬라이더로 맞추세요.':'이미지를 열지 못했어요. 다시 눌러 주세요.',ok?'ok':'err');
+    persist();return ok;
+  }catch(e){setMsg(i,e.message,'err');return false}
+  finally{c.busy=false;draw(canv[i],c,i);renderMsg(i)}
+}
+$('allImgBtn').onclick=async()=>{
+  const btn=$('allImgBtn'),todo=[];for(let i=0;i<state.count;i++)if(!state.cards[i].imgEl)todo.push(i);
+  if(!todo.length){status('imgStatus','모든 카드에 사진이 있어요.','ok');return}
+  btn.disabled=true;status('imgStatus',`${todo.length}장을 동시에 만드는 중…`);
+  const res=await Promise.all(todo.map(i=>genImage(i)));const done=res.filter(Boolean).length;
+  status('imgStatus',`${todo.length}장 중 ${done}장 완료.`,done===todo.length?'ok':'warn');btn.disabled=false;
+};
+
+// --- 저장
+function toBlob(cv){return new Promise((res,rej)=>{try{cv.toBlob(b=>b?res(b):rej(new Error('blank')),'image/png')}catch(e){rej(e)}})}
+const safe=s=>(s||'cardnews').replace(/[\\/:*?"<>|\s]+/g,'_');
+function fname(i){return safe(state.brand)+'_'+String(i+1).padStart(2,'0')+'.png'}
+function downloadBlob(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
+async function saveOne(i){
+  try{draw(canv[i],state.cards[i],i);downloadBlob(await toBlob(canv[i]),fname(i));setMsg(i,'저장했어요.','ok')}catch(e){setMsg(i,'저장에 실패했어요: '+e.message,'err')}
+}
+$('zipBtn').onclick=async()=>{
+  if(!window.JSZip){status('imgStatus','압축 도구를 불러오지 못했어요. 카드별 PNG 저장을 써 주세요.','err');return}
+  const btn=$('zipBtn');btn.disabled=true;
+  try{const zip=new JSZip();for(let i=0;i<state.count;i++){draw(canv[i],state.cards[i],i);zip.file(fname(i),await toBlob(canv[i]))}
+    downloadBlob(await zip.generateAsync({type:'blob'}),safe(state.brand)+'_카드뉴스.zip');status('imgStatus','전체 카드를 저장했어요.','ok')}
+  catch(e){status('imgStatus','저장에 실패했어요: '+e.message,'err')}
+  btn.disabled=false;
+};
+
+// --- 시작
+async function boot(){
+  buildCards();
+  fetch('/api/config').then(r=>r.json()).then(c=>{cfg=c;
+    if(cfg.needCode&&!accessCode)showCode(true);
+    if(!cfg.canWrite)status('writeStatus','서버에 Claude API 키가 아직 설정되지 않았어요.','warn');
+    if(!cfg.canImage)status('imgStatus','서버에 힉스필드 API 키가 아직 설정되지 않았어요.','warn');
+  }).catch(()=>{});
+  for(const c of state.cards){if(c.img)await attachImg(c,c.img)}
+  drawAll();
+  // 글꼴이 늦게 도착해도 다시 그리기
+  Promise.all(['900 60px "Noto Sans KR"','400 40px "Noto Sans KR"','700 30px "Noto Sans KR"','400 60px "Black Han Sans"'].map(f=>document.fonts.load(f))).then(drawAll,drawAll);
+}
+boot();
+})();
+</script>
+</body>
+</html>
