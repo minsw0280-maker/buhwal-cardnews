@@ -1,5 +1,5 @@
 // 부활수업 카드뉴스 공방 — Render용 서버 (외부 패키지 없음, Node 18 이상)
-// 필요한 환경변수: ANTHROPIC_API_KEY, HF_API_KEY_ID, HF_API_KEY_SECRET
+// 필요한 환경변수: ANTHROPIC_API_KEY, HF_API_KEY (또는 HF_API_KEY_ID + HF_API_KEY_SECRET)
 // 선택: ACCESS_CODE (설정하면 이 코드를 아는 사람만 AI 글쓰기·이미지 생성을 쓸 수 있음)
 const http = require('http');
 const fs = require('fs');
@@ -38,7 +38,10 @@ function extractJson(text) {
   if (s >= 0 && e > s) { try { return JSON.parse(t.slice(s, e + 1)); } catch {} }
   return null;
 }
-const hfAuth = () => `Key ${process.env.HF_API_KEY_ID}:${process.env.HF_API_KEY_SECRET}`;
+// 힉스필드 콘솔의 'Copy API key' 값 하나(HF_API_KEY)를 그대로 넣거나, 예전 방식의 ID·Secret 두 개를 넣어도 됨
+const HF_KEY = (process.env.HF_API_KEY || '').trim();
+const hasHf = () => !!(HF_KEY || (process.env.HF_API_KEY_ID && process.env.HF_API_KEY_SECRET));
+const hfAuth = () => HF_KEY ? `Key ${HF_KEY.replace(/^Key\s+/i, '')}` : `Key ${process.env.HF_API_KEY_ID}:${process.env.HF_API_KEY_SECRET}`;
 const results = new Map(); // request_id -> 완성 이미지 원본 주소
 
 // ---------- API ----------
@@ -49,7 +52,7 @@ async function handleApi(req, res, url) {
     return send(res, 200, {
       needCode: !!ACCESS_CODE,
       canWrite: !!process.env.ANTHROPIC_API_KEY,
-      canImage: !!(process.env.HF_API_KEY_ID && process.env.HF_API_KEY_SECRET),
+      canImage: hasHf(),
     });
   }
   if (!codeOk(req)) return send(res, 401, { error: '접근 코드가 맞지 않아요.' });
@@ -85,7 +88,7 @@ async function handleApi(req, res, url) {
   if (p === '/api/image' && req.method === 'POST') {
     const prompt = String((await readBody(req)).prompt || '').slice(0, 2000);
     if (!prompt) return send(res, 400, { error: '이미지 프롬프트가 비어 있어요.' });
-    if (!process.env.HF_API_KEY_ID) return send(res, 503, { error: '서버에 힉스필드 API 키가 설정되지 않았어요.' });
+    if (!hasHf()) return send(res, 503, { error: '서버에 힉스필드 API 키가 설정되지 않았어요.' });
     try {
       const r = await fetch(`${HF_BASE}/${HF_MODEL}`, {
         method: 'POST',

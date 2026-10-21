@@ -20,8 +20,7 @@
 | 이름 | 값 | 필수 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Claude API 키 (console.anthropic.com) | AI 글쓰기에 필요 |
-| `HF_API_KEY_ID` | 힉스필드 API Key ID (console.higgsfield.ai) | 이미지 생성에 필요 |
-| `HF_API_KEY_SECRET` | 힉스필드 API Key Secret | 이미지 생성에 필요 |
+| `HF_API_KEY` | 힉스필드 콘솔(console.higgsfield.ai)의 Copy API key 값 그대로 | 이미지 생성에 필요 |
 | `ACCESS_CODE` | 아무 비밀 코드 (예: `buhwal2026`) | 강력 추천 |
 
 `ACCESS_CODE`를 넣으면 코드를 아는 사람만 AI 글쓰기·이미지 생성을 쓸 수 있어요. 넣지 않으면 주소를 아는 누구나 내 크레딧을 쓸 수 있습니다.
